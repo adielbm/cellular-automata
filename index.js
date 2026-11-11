@@ -329,6 +329,335 @@ class RuleEngine {
 }
 
 // ============================================================================
+// LaTeX Exporter
+// ============================================================================
+
+class LatexExporter {
+  /**
+   * Determine whether text on a given background color should be white or black.
+   * Uses perceived luminance (ITU-R BT.601 formula).
+   * @param {string} hexColor #rrggbb or #rgb
+   * @returns {'white' | 'black'}
+   */
+  static getContrastColor(hexColor) {
+    if (!hexColor || typeof hexColor !== 'string') return 'black';
+    const hex = hexColor.replace('#', '').trim();
+    if (hex.length !== 6 && hex.length !== 3) return 'black';
+    let r, g, b;
+    if (hex.length === 3) {
+      r = parseInt(hex[0] + hex[0], 16);
+      g = parseInt(hex[1] + hex[1], 16);
+      b = parseInt(hex[2] + hex[2], 16);
+    } else {
+      r = parseInt(hex.substring(0, 2), 16);
+      g = parseInt(hex.substring(2, 4), 16);
+      b = parseInt(hex.substring(4, 6), 16);
+    }
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    return luminance < 140 ? 'white' : 'black';
+  }
+
+  /**
+   * Format a cell color macro according to syntax preference.
+   * @param {string} hexColor e.g. '#ffbdbd'
+   * @param {'hex' | 'html'} syntax 'hex' -> \cellcolor{#ffbdbd}, 'html' -> \cellcolor[HTML]{ffbdbd}
+   * @returns {string}
+   */
+  static formatCellColor(hexColor, syntax = 'hex') {
+    const raw = hexColor.replace('#', '').toLowerCase();
+    if (syntax === 'html') {
+      return `\\cellcolor[HTML]{${raw}}`;
+    }
+    return `\\cellcolor{#${raw}}`;
+  }
+
+  /**
+   * Format a colored boxed cell macro (\fcolorbox) according to syntax preference.
+   * @param {string} hexColor e.g. '#0080ff'
+   * @param {string} textColor e.g. 'white' or 'black'
+   * @param {number | string} val e.g. 1
+   * @param {'hex' | 'html'} syntax 'hex' -> \fcolorbox{#0080ff}{#0080ff}{\color{white}1}, 'html' -> \fcolorbox[HTML]{0080ff}{0080ff}{\color{white}1}
+   * @returns {string}
+   */
+  static formatFColorBox(hexColor, textColor, val, syntax = 'hex') {
+    const raw = hexColor.replace('#', '').toLowerCase();
+    if (syntax === 'html') {
+      return `\\fcolorbox[HTML]{${raw}}{${raw}}{\\color{${textColor}}${val}}`;
+    }
+    return `\\fcolorbox{#${raw}}{#${raw}}{\\color{${textColor}}${val}}`;
+  }
+
+  /**
+   * Format a single pattern rule as LaTeX math.
+   * @param {object} rule
+   * @param {number} radius
+   * @param {ColorManager} colors
+   * @param {'all' | 'center' | 'none'} [colorMode='all']
+   * @param {'hex' | 'html'} [syntax='hex']
+   * @returns {string} LaTeX math string (without outer $$ or $)
+   */
+  static formatPatternRule(rule, radius, colors, colorMode = 'all', syntax = 'hex') {
+    const k = 2 * radius + 1;
+    const centerIdx = (k * k - 1) / 2;
+    const colSpec = '|' + 'c|'.repeat(k);
+    const pat = Array.isArray(rule.pat) && rule.pat.length === k * k
+      ? rule.pat
+      : new Array(k * k).fill(-1);
+
+    const arrayLines = [`\\begin{array}{${colSpec}}`, '\\hline'];
+    for (let y = 0; y < k; y++) {
+      const rowCells = [];
+      for (let x = 0; x < k; x++) {
+        const idx = y * k + x;
+        const val = pat[idx];
+        const isCenter = idx === centerIdx;
+
+        if (val < 0) {
+          rowCells.push('*');
+        } else {
+          const hex = colors.getColor(val);
+          const textColor = LatexExporter.getContrastColor(hex);
+          const shouldColor = (colorMode === 'all') || (colorMode === 'center' && isCenter);
+
+          if (shouldColor) {
+            const cc = LatexExporter.formatCellColor(hex, syntax);
+            rowCells.push(`${cc}\\color{${textColor}}${val}`);
+          } else {
+            rowCells.push(String(val));
+          }
+        }
+      }
+      arrayLines.push(rowCells.join(' & ') + ' \\\\');
+      arrayLines.push('\\hline');
+    }
+    arrayLines.push('\\end{array}');
+
+    let outStr;
+    if (rule.o < 0) {
+      outStr = '\\fbox{*}';
+    } else {
+      const outHex = colors.getColor(rule.o);
+      const outTextColor = LatexExporter.getContrastColor(outHex);
+      if (colorMode !== 'none') {
+        outStr = LatexExporter.formatFColorBox(outHex, outTextColor, rule.o, syntax);
+      } else {
+        outStr = `\\fbox{${rule.o}}`;
+      }
+    }
+
+    let mathBody = arrayLines.join('\n') + '\n\\quad\\longrightarrow\\quad\n' + outStr;
+    if (rule.sym) {
+      mathBody += ' \\quad\\text{(rot / flip)}';
+    }
+    return mathBody;
+  }
+
+  /**
+   * Format a single pattern rule as compact single-line LaTeX math for inline rows.
+   * @param {object} rule
+   * @param {number} radius
+   * @param {ColorManager} colors
+   * @param {'all' | 'center' | 'none'} [colorMode='all']
+   * @param {'hex' | 'html'} [syntax='hex']
+   * @returns {string} Single-line LaTeX math expression
+   */
+  static formatPatternRuleInline(rule, radius, colors, colorMode = 'all', syntax = 'hex') {
+    const k = 2 * radius + 1;
+    const centerIdx = (k * k - 1) / 2;
+    const colSpec = '|' + 'c|'.repeat(k);
+    const pat = Array.isArray(rule.pat) && rule.pat.length === k * k
+      ? rule.pat
+      : new Array(k * k).fill(-1);
+
+    const rows = [];
+    for (let y = 0; y < k; y++) {
+      const rowCells = [];
+      for (let x = 0; x < k; x++) {
+        const idx = y * k + x;
+        const val = pat[idx];
+        const isCenter = idx === centerIdx;
+
+        if (val < 0) {
+          rowCells.push('*');
+        } else {
+          const hex = colors.getColor(val);
+          const textColor = LatexExporter.getContrastColor(hex);
+          const shouldColor = (colorMode === 'all') || (colorMode === 'center' && isCenter);
+
+          if (shouldColor) {
+            const cc = LatexExporter.formatCellColor(hex, syntax);
+            rowCells.push(`${cc}\\color{${textColor}}${val}`);
+          } else {
+            rowCells.push(String(val));
+          }
+        }
+      }
+      rows.push(rowCells.join(' & ') + ' \\\\ \\hline');
+    }
+
+    const arrayStr = `\\begin{array}{${colSpec}} \\hline ${rows.join(' ')} \\end{array}`;
+
+    let outStr;
+    if (rule.o < 0) {
+      outStr = '\\fbox{*}';
+    } else {
+      const outHex = colors.getColor(rule.o);
+      const outTextColor = LatexExporter.getContrastColor(outHex);
+      if (colorMode !== 'none') {
+        outStr = LatexExporter.formatFColorBox(outHex, outTextColor, rule.o, syntax);
+      } else {
+        outStr = `\\fbox{${rule.o}}`;
+      }
+    }
+
+    let mathBody = `${arrayStr}\\quad\\longrightarrow\\quad${outStr}`;
+    if (rule.sym) {
+      mathBody += ' \\quad\\text{(rot / flip)}';
+    }
+    return mathBody;
+  }
+
+  /**
+   * Format a single count rule as LaTeX math.
+   * @param {object} rule
+   * @param {ColorManager} colors
+   * @param {'all' | 'center' | 'none'} [colorMode='all']
+   * @param {'hex' | 'html'} [syntax='hex']
+   * @returns {string} LaTeX math string
+   */
+  static formatCountRule(rule, colors, colorMode = 'all', syntax = 'hex') {
+    const sHex = colors.getColor(rule.s);
+    const sTextColor = LatexExporter.getContrastColor(sHex);
+    const cellBox = colorMode !== 'none'
+      ? LatexExporter.formatFColorBox(sHex, sTextColor, rule.s, syntax)
+      : `\\fbox{${rule.s}}`;
+
+    const nHex = colors.getColor(rule.n);
+    const nTextColor = LatexExporter.getContrastColor(nHex);
+    const neighBox = colorMode !== 'none'
+      ? LatexExporter.formatFColorBox(nHex, nTextColor, rule.n, syntax)
+      : `\\fbox{${rule.n}}`;
+
+    let condStr;
+    if (rule.min === rule.max) {
+      condStr = `\\text{count}(${neighBox}) = ${rule.min}`;
+    } else {
+      condStr = `${rule.min} \\le \\text{count}(${neighBox}) \\le ${rule.max}`;
+    }
+
+    let outStr;
+    if (rule.o < 0) {
+      outStr = '\\fbox{*}';
+    } else {
+      const outHex = colors.getColor(rule.o);
+      const outTextColor = LatexExporter.getContrastColor(outHex);
+      outStr = colorMode !== 'none'
+        ? LatexExporter.formatFColorBox(outHex, outTextColor, rule.o, syntax)
+        : `\\fbox{${rule.o}}`;
+    }
+
+    return `\\text{cell } ${cellBox} \\text{ with } ${condStr}\n\\quad\\longrightarrow\\quad\n${outStr}`;
+  }
+
+  /**
+   * Export all rules to LaTeX format.
+   * @param {object} options
+   * @param {Array<object>} options.rules
+   * @param {number} options.radius
+   * @param {number} options.numStates
+   * @param {boolean} options.wrapEdges
+   * @param {ColorManager} options.colors
+   * @param {'all' | 'center' | 'none'} [options.colorMode='all']
+   * @param {'hex' | 'html'} [options.syntax='hex']
+   * @param {'display' | 'inline' | 'bracket' | 'enumerate' | 'document'} [options.format='display']
+   * @returns {string}
+   */
+  static exportRules({ rules, radius, numStates, wrapEdges, colors, colorMode = 'all', syntax = 'hex', format = 'display' }) {
+    if (!rules || rules.length === 0) {
+      if (format === 'document') {
+        return `\\documentclass{article}
+\\usepackage{amsmath}
+\\usepackage[table]{xcolor}
+
+\\title{Cellular Automaton Rules}
+\\date{}
+
+\\begin{document}
+\\maketitle
+
+\\section*{Rules}
+% States: ${numStates} | Radius: ${radius} | Wrap edges: ${wrapEdges}
+No rules defined (cells keep current state).
+
+\\end{document}`;
+      }
+      return '% No rules defined (cells keep current state)';
+    }
+
+    const mathItems = rules.map(rule => {
+      if (rule.t === 'c') {
+        return LatexExporter.formatCountRule(rule, colors, colorMode, syntax);
+      }
+      return LatexExporter.formatPatternRule(rule, radius, colors, colorMode, syntax);
+    });
+
+    if (format === 'display') {
+      return mathItems.map(m => `$$\n${m}\n$$`).join('\n\n');
+    }
+
+    if (format === 'bracket') {
+      return mathItems.map(m => `\\[\n${m}\n\\]`).join('\n\n');
+    }
+
+    if (format === 'inline') {
+      const inlineItems = rules.map(rule => {
+        if (rule.t === 'c') {
+          return LatexExporter.formatCountRule(rule, colors, colorMode, syntax).replace(/\n/g, ' ');
+        }
+        return LatexExporter.formatPatternRuleInline(rule, radius, colors, colorMode, syntax);
+      });
+
+      const chunkedRows = [];
+      const separator = ' \\quad\\quad\\quad\\quad\\quad ';
+      for (let i = 0; i < inlineItems.length; i += 3) {
+        const slice = inlineItems.slice(i, i + 3);
+        chunkedRows.push(`$${slice.join(separator)}$`);
+      }
+      return chunkedRows.join('\n\n');
+    }
+
+    if (format === 'enumerate') {
+      const items = mathItems.map(m => `  \\item\n$$\n${m}\n$$`).join('\n');
+      return `\\begin{enumerate}\n${items}\n\\end{enumerate}`;
+    }
+
+    if (format === 'document') {
+      const items = mathItems.map(m => `  \\item\n$$\n${m}\n$$`).join('\n');
+      return `\\documentclass{article}
+\\usepackage{amsmath}
+\\usepackage[table]{xcolor}
+
+\\title{Cellular Automaton Rules}
+\\date{}
+
+\\begin{document}
+\\maketitle
+
+\\section*{Rules}
+% States: ${numStates} | Radius: ${radius} | Wrap edges: ${wrapEdges}
+
+\\begin{enumerate}
+${items}
+\\end{enumerate}
+
+\\end{document}`;
+    }
+
+    return mathItems.map(m => `$$\n${m}\n$$`).join('\n\n');
+  }
+}
+
+// ============================================================================
 // Main Application
 // ============================================================================
 
@@ -398,7 +727,21 @@ class CellularAutomatonApp {
       genDisplay: document.getElementById('gen'),
       randomizeBtn: document.getElementById('rand'),
       densityInput: document.getElementById('dens'),
-      clearBtn: document.getElementById('clear')
+      clearBtn: document.getElementById('clear'),
+
+      // LaTeX Export Modal & Buttons
+      expLatexBtn: document.getElementById('expLatex'),
+      expLatexRulesBtn: document.getElementById('expLatexRules'),
+      latexModal: document.getElementById('latexModal'),
+      latexCloseBtn: document.getElementById('latexCloseBtn'),
+      latexDismissBtn: document.getElementById('latexDismissBtn'),
+      latexCopyBtn: document.getElementById('latexCopyBtn'),
+      latexDownloadBtn: document.getElementById('latexDownloadBtn'),
+      latexOutput: document.getElementById('latexOutput'),
+      latexColorMode: document.getElementById('latexColorMode'),
+      latexSyntax: document.getElementById('latexSyntax'),
+      latexFormat: document.getElementById('latexFormat'),
+      latexStatusMsg: document.getElementById('latexStatusMsg')
     };
 
     this.init();
@@ -563,6 +906,52 @@ class CellularAutomatonApp {
     // Import / Export
     this.dom.exportBtn.addEventListener('click', () => this.exportConfig());
     this.dom.importBtn.addEventListener('click', () => this.importConfig());
+    if (this.dom.expLatexBtn) {
+      this.dom.expLatexBtn.addEventListener('click', () => {
+        this.openLatexExportModal();
+        this.showIoMessage('LaTeX rules exported.');
+      });
+    }
+    if (this.dom.expLatexRulesBtn) {
+      this.dom.expLatexRulesBtn.addEventListener('click', () => {
+        this.openLatexExportModal();
+      });
+    }
+
+    // LaTeX Modal Controls
+    if (this.dom.latexCloseBtn) {
+      this.dom.latexCloseBtn.addEventListener('click', () => this.closeLatexExportModal());
+    }
+    if (this.dom.latexDismissBtn) {
+      this.dom.latexDismissBtn.addEventListener('click', () => this.closeLatexExportModal());
+    }
+    if (this.dom.latexModal) {
+      this.dom.latexModal.addEventListener('click', e => {
+        if (e.target === this.dom.latexModal) {
+          this.closeLatexExportModal();
+        }
+      });
+    }
+    if (this.dom.latexColorMode) {
+      this.dom.latexColorMode.addEventListener('change', () => this.updateLatexExport());
+    }
+    if (this.dom.latexSyntax) {
+      this.dom.latexSyntax.addEventListener('change', () => this.updateLatexExport());
+    }
+    if (this.dom.latexFormat) {
+      this.dom.latexFormat.addEventListener('change', () => {
+        if (this.dom.latexFormat.value === 'document' && this.dom.latexSyntax.value === 'hex') {
+          this.dom.latexSyntax.value = 'html';
+        }
+        this.updateLatexExport();
+      });
+    }
+    if (this.dom.latexCopyBtn) {
+      this.dom.latexCopyBtn.addEventListener('click', () => this.copyLatexToClipboard());
+    }
+    if (this.dom.latexDownloadBtn) {
+      this.dom.latexDownloadBtn.addEventListener('click', () => this.downloadLatexFile());
+    }
 
     // Section 1 - Rules
     this.dom.radiusInput.addEventListener('change', () => this.handleRadiusChange());
@@ -1507,6 +1896,125 @@ class CellularAutomatonApp {
     } catch (err) {
       this.showIoMessage(`Import failed — ${err.message || err}`, true);
     }
+  }
+
+  /**
+   * Generate LaTeX rules text using current options from the modal.
+   * @returns {string}
+   */
+  generateLatexRulesText() {
+    const colorMode = this.dom.latexColorMode ? this.dom.latexColorMode.value : 'all';
+    const syntax = this.dom.latexSyntax ? this.dom.latexSyntax.value : 'hex';
+    const format = this.dom.latexFormat ? this.dom.latexFormat.value : 'display';
+
+    return LatexExporter.exportRules({
+      rules: this.rules,
+      radius: this.radius,
+      numStates: this.numStates,
+      wrapEdges: this.wrapEdges,
+      colors: this.colors,
+      colorMode,
+      syntax,
+      format
+    });
+  }
+
+  /**
+   * Update the LaTeX textarea with regenerated output.
+   */
+  updateLatexExport() {
+    if (!this.dom.latexOutput) return;
+    this.dom.latexOutput.value = this.generateLatexRulesText();
+  }
+
+  /**
+   * Open the LaTeX Export modal, populate text, and copy to clipboard.
+   */
+  async openLatexExportModal() {
+    if (!this.dom.latexModal) return;
+    this.updateLatexExport();
+
+    if (typeof this.dom.latexModal.showModal === 'function') {
+      try {
+        if (!this.dom.latexModal.open) {
+          this.dom.latexModal.showModal();
+        }
+      } catch (_) {
+        this.dom.latexModal.setAttribute('open', '');
+      }
+    } else {
+      this.dom.latexModal.setAttribute('open', '');
+    }
+
+    // Auto-copy to clipboard on open
+    await this.copyLatexToClipboard(true);
+  }
+
+  /**
+   * Close the LaTeX Export modal.
+   */
+  closeLatexExportModal() {
+    if (!this.dom.latexModal) return;
+    if (typeof this.dom.latexModal.close === 'function') {
+      try {
+        this.dom.latexModal.close();
+      } catch (_) {
+        this.dom.latexModal.removeAttribute('open');
+      }
+    } else {
+      this.dom.latexModal.removeAttribute('open');
+    }
+  }
+
+  /**
+   * Show status message inside the LaTeX modal.
+   * @param {string} text
+   * @param {boolean} isError
+   */
+  showLatexStatus(text, isError = false) {
+    if (!this.dom.latexStatusMsg) return;
+    this.dom.latexStatusMsg.textContent = text;
+    this.dom.latexStatusMsg.className = 'msg-status' + (isError ? ' error' : ' success');
+  }
+
+  /**
+   * Copy current LaTeX output to clipboard.
+   * @param {boolean} isAutoCopy Whether this was triggered automatically on modal open
+   */
+  async copyLatexToClipboard(isAutoCopy = false) {
+    if (!this.dom.latexOutput) return;
+    const text = this.dom.latexOutput.value;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        this.showLatexStatus(isAutoCopy ? 'Exported and copied to clipboard.' : 'Copied to clipboard!');
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (_) {
+      this.dom.latexOutput.focus();
+      this.dom.latexOutput.select();
+      this.showLatexStatus(isAutoCopy ? 'Exported — copy text above.' : 'Selected — press Ctrl+C / Cmd+C to copy');
+    }
+  }
+
+  /**
+   * Download exported LaTeX rules as a .tex file.
+   */
+  downloadLatexFile() {
+    if (!this.dom.latexOutput) return;
+    const text = this.dom.latexOutput.value;
+    const blob = new Blob([text], { type: 'text/x-tex;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cellular_automaton_rules.tex';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showLatexStatus('Downloaded cellular_automaton_rules.tex');
   }
 }
 

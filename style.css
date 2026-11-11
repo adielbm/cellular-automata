@@ -522,3 +522,138 @@ textarea {
     gap: 6px 8px;
   }
 }
+
+/* LaTeX Export Modal */
+dialog.latex-dialog {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0;
+  max-width: 680px;
+  width: calc(100% - 32px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  margin: auto;
+}
+
+dialog.latex-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.latex-dialog-content {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 22px;
+  gap: 14px;
+}
+
+.latex-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.latex-dialog-header h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.latex-dialog-close {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--mute);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.latex-dialog-close:hover {
+  color: var(--fg);
+  background: var(--card-bg);
+}
+
+.latex-dialog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  background: var(--card-bg);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.latex-option-group {
+  display: flex;
+  align-items: center;
+}
+
+.latex-option-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.latex-option-group select {
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--bg);
+}
+
+.latex-dialog textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  color: var(--fg);
+  resize: vertical;
+  min-height: 190px;
+  tab-size: 2;
+  box-sizing: border-box;
+}
+
+.latex-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.latex-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 600px) {
+  .latex-dialog-content {
+    padding: 16px 14px;
+    gap: 12px;
+  }
+
+  .latex-dialog-toolbar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .latex-dialog-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+

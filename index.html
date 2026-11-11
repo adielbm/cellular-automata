@@ -43,6 +43,7 @@
       <div class="row" style="margin-top: 8px">
         <button type="button" class="btn" id="exp">Export</button>
         <button type="button" class="btn" id="imp">Import</button>
+        <button type="button" class="btn" id="expLatex">Export LaTeX</button>
         <span class="msg-status" id="ioMsg"></span>
       </div>
 
@@ -71,6 +72,7 @@
       <div class="row" style="margin-top: 14px">
         <button type="button" class="btn" id="addP">+ Pattern rule</button>
         <button type="button" class="btn" id="addC">+ Count rule</button>
+        <button type="button" class="btn" id="expLatexRules">Export to LaTeX</button>
       </div>
 
       <div class="foot">
@@ -105,6 +107,60 @@
         <span></span>
       </div>
     </section>
+
+    <!-- LaTeX Export Modal -->
+    <dialog id="latexModal" class="latex-dialog" aria-labelledby="latexModalTitle">
+      <div class="latex-dialog-content">
+        <div class="latex-dialog-header">
+          <h2 id="latexModalTitle">Export Rules to LaTeX</h2>
+          <button type="button" class="latex-dialog-close" id="latexCloseBtn" title="Close (Esc)">&times;</button>
+        </div>
+
+        <div class="latex-dialog-toolbar">
+          <div class="latex-option-group">
+            <label for="latexColorMode">Cell coloring
+              <select id="latexColorMode">
+                <option value="all" selected>All cells (except *)</option>
+                <option value="center">Center &amp; output only</option>
+                <option value="none">No colors</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="latex-option-group">
+            <label for="latexSyntax">Syntax
+              <select id="latexSyntax">
+                <option value="hex" selected>\cellcolor{#hex} (KaTeX / Web)</option>
+                <option value="html">\cellcolor[HTML]{hex} (LaTeX / Overleaf)</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="latex-option-group">
+            <label for="latexFormat">Format
+              <select id="latexFormat">
+                <option value="display" selected>Display math ($$...$$)</option>
+                <option value="bracket">LaTeX bracket (\[...\])</option>
+                <option value="inline">Inline list ($...$ · 3 per row)</option>
+                <option value="enumerate">Enumerate list (\begin{enumerate})</option>
+                <option value="document">Full document (\documentclass)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <textarea id="latexOutput" rows="11" spellcheck="false" readonly></textarea>
+
+        <div class="latex-dialog-footer">
+          <span class="msg-status" id="latexStatusMsg"></span>
+          <div class="latex-dialog-actions">
+            <button type="button" class="btn pri" id="latexCopyBtn">Copy to clipboard</button>
+            <button type="button" class="btn" id="latexDownloadBtn">Download .tex</button>
+            <button type="button" class="btn" id="latexDismissBtn">Close</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
   </main>
 
   <script type="module" src="index.js"></script>

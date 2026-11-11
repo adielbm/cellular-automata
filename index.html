@@ -1,322 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Cellular Automaton</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>▦</text></svg>">
-<style>
-:root{--bg:#fafaf8;--fg:#1c1c1a;--mute:#77776f;--line:#dcdcd6;--c0:#ececE6;--acc:#1c1c1a;--accfg:#fafaf8;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--fg:#ecece8;--mute:#8d8d85;--line:#33332f;--c0:#262624;--acc:#ecece8;--accfg:#171716}}
-:root[data-theme="dark"]{--bg:#171716;--fg:#ecece8;--mute:#8d8d85;--line:#33332f;--c0:#262624;--acc:#ecece8;--accfg:#171716}
-*{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:720px;margin:0 auto;padding:28px 18px 48px}
-h1{font-size:18px;font-weight:600;margin:0 0 4px}
-p.sub{color:var(--mute);margin:0 0 22px;font-size:13px}
-nav{display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line)}
-nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--mute);padding:8px 10px;font:inherit;cursor:pointer;margin-bottom:-1px}
-nav button.on{color:var(--fg);border-color:var(--fg)}
-section{display:none}section.on{display:block}
-label{display:inline-flex;align-items:center;gap:8px;color:var(--mute);font-size:13px}
-input,select,button{font:inherit;color:var(--fg)}
-input[type=number],select{background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 7px;width:64px}
-select{width:auto}
-.btn{background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
-.btn:hover{border-color:var(--fg)}
-.btn.pri{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
-.row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:16px}
-.sw{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 16px}
-.sw span{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:3px 8px 3px 4px;font-size:13px}
-.sw i{width:16px;height:16px;border-radius:4px;display:block}
-.sw.pick span{cursor:pointer}.sw.pick span.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
-.rule{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
-.rule .x{margin-left:auto;background:none;border:0;color:var(--mute);cursor:pointer;font-size:18px;line-height:1}
-.rule input[type=number]{width:54px}
-.hint{color:var(--mute);font-size:13px;margin:0 0 14px}
-canvas{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px;image-rendering:pixelated;touch-action:none;cursor:crosshair}
-.foot{display:flex;justify-content:space-between;margin-top:20px}
-.gen{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;margin-left:auto}
-.sw i{display:flex;align-items:center;justify-content:center;font-size:12px;font-style:normal;color:var(--mute);border:1px solid var(--line)}
-.pg{display:grid;gap:2px;touch-action:none}
-.pcell{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:3px;cursor:pointer;color:var(--mute);font-size:12px;user-select:none}
-.pcell.ctr{outline:2px solid var(--fg);outline-offset:1px}
-.tools{margin-left:auto;display:flex;gap:2px}
-.tools .x{margin-left:0;padding:0 6px}
-.rule{gap:8px 10px}
-textarea{width:100%;background:transparent;border:1px solid var(--line);border-radius:6px;padding:8px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--fg);resize:vertical}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cellular Automaton</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>▦</text></svg>">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
-<h1>Cellular automaton</h1>
-<p class="sub">2D · Moore neighborhood · any number of states</p>
-<nav id="tabs"><button data-t="0">1 · States</button><button data-t="1">2 · Rules</button><button data-t="2">3 · Initial &amp; run</button></nav>
+  <main>
+    <header>
+      <h1>Cellular automaton</h1>
+      <p class="sub">2D · Moore neighborhood · any number of states</p>
+    </header>
 
-<section id="s0">
-  <div class="row">
-    <label>Number of states <input type="number" id="nStates" min="2" max="32" value="2"></label>
-    <label>Columns <input type="number" id="cols" min="8" max="200" value="60"></label>
-    <label>Rows <input type="number" id="rows" min="8" max="200" value="40"></label>
-  </div>
-  <div class="sw" id="legend"></div>
-  <p class="hint">State 0 is the empty background. Colors are generated automatically.</p>
-  <div class="row" style="margin-bottom:6px"><span style="color:var(--mute);font-size:13px">Import / export (states, radius, wrap, rules)</span></div>
-  <textarea id="io" rows="5" spellcheck="false" placeholder="Paste a CA definition here to import, or press Export"></textarea>
-  <div class="row" style="margin-top:8px"><button class="btn" id="exp">Export</button><button class="btn" id="imp">Import</button><span class="hint" id="ioMsg" style="margin:0"></span></div>
-  <div class="foot"><span></span><button class="btn pri" data-go="1">Rules →</button></div>
-</section>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button type="button" class="on" data-t="0">1 · States</button>
+      <button type="button" data-t="1">2 · Rules</button>
+      <button type="button" data-t="2">3 · Initial &amp; run</button>
+    </nav>
 
-<section id="s1">
-  <div class="row">
-    <label>Radius <input type="number" id="radius" min="1" max="5" value="1"></label>
-    <label><input type="checkbox" id="wrap" checked> Wrap edges</label>
-  </div>
-  <p class="hint">Rules are checked top to bottom; the first match applies, otherwise the cell keeps its state. Pick a pen, then click cells in a pattern to paint them. <b>*</b> matches any state (as a result it means “unchanged”). The outlined center cell is the one being updated; out-of-grid cells only match *. Count rules look at up to <span id="maxn">8</span> neighbors.</p>
-  <div class="sw pick" id="pen"></div>
-  <div id="rules"></div>
-  <div class="row" style="margin-top:14px"><button class="btn" id="addP">+ Pattern rule</button><button class="btn" id="addC">+ Count rule</button></div>
-  <div class="foot"><button class="btn" data-go="0">← States</button><button class="btn pri" data-go="2">Initial &amp; run →</button></div>
-</section>
+    <!-- Section 0: States & Dimensions -->
+    <section id="s0" class="on" aria-labelledby="tab-0">
+      <div class="row">
+        <label for="nStates">Number of states <input type="number" id="nStates" min="2" max="32" value="2"></label>
+        <label for="cols">Columns <input type="number" id="cols" min="8" max="200" value="60"></label>
+        <label for="rows">Rows <input type="number" id="rows" min="8" max="200" value="40"></label>
+      </div>
 
-<section id="s2">
-  <div class="sw pick" id="brush"></div>
-  <canvas id="cv"></canvas>
-  <div class="row" style="margin-top:14px">
-    <button class="btn pri" id="play">Run</button>
-    <button class="btn" id="step">Step</button>
-    <button class="btn" id="reset">Reset</button>
-    <label>Speed <input type="range" id="speed" min="1" max="60" value="12"></label>
-    <span class="gen" id="gen">gen 0</span>
-  </div>
-  <div class="row">
-    <button class="btn" id="rand">Randomize</button>
-    <label>density <input type="number" id="dens" min="1" max="100" value="30">%</label>
-    <button class="btn" id="clear">Clear</button>
-  </div>
-  <p class="hint">Click or drag on the grid to paint with the selected state. “Reset” returns to the last painted configuration.</p>
-  <div class="foot"><button class="btn" data-go="1">← Rules</button><span></span></div>
-</section>
-</main>
-<script>
-const $=id=>document.getElementById(id);
-let N=2,R=1,W=60,H=40,rules=[],grid,init,gen=0,timer=null,brush=1,CELL=10;
-function color(i){
-  if(i===0)return getComputedStyle(document.documentElement).getPropertyValue('--c0').trim()||'#eee';
-  const h=((i-1)*137.5+210)%360;return `hsl(${h.toFixed(0)} 62% ${46+((i%3)*4)}%)`;
-}
-function sw(el,pick){
-  el.innerHTML='';
-  for(let i=0;i<N;i++){const s=document.createElement('span');
-    s.innerHTML=`<i style="background:${color(i)}"></i>${i}`;
-    if(pick){if(i===brush)s.className='on';s.onclick=()=>{brush=i;sw(el,true)}}
-    el.appendChild(s)}
-}
-function tab(t){
-  document.querySelectorAll('section').forEach((s,i)=>s.classList.toggle('on',i===t));
-  document.querySelectorAll('nav button').forEach((b,i)=>b.classList.toggle('on',i===t));
-  if(t===1)renderRules();
-  if(t===2){sw($('brush'),true);draw()}
-  if(t!==2)stop();
-}
-document.querySelectorAll('nav button').forEach((b,i)=>b.onclick=()=>tab(i));
-document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>tab(+b.dataset.go));
+      <div class="palette-header">
+        <span class="palette-title">State palette</span>
+        <button type="button" class="btn btn-sm" id="resetColors" title="Restore default auto-generated palette">Reset colors</button>
+      </div>
+      <div class="sw legend-swatches" id="legend"></div>
+      <p class="hint">State 0 is the empty background. Click any state swatch above to pick a custom color.</p>
 
-function newGrid(){
-  W=clamp($('cols').value,8,200);H=clamp($('rows').value,8,200);
-  grid=new Uint8Array(W*H);init=grid.slice();gen=0;
-  const cv=$('cv');CELL=Math.max(4,Math.min(12,Math.floor(1200/W)));
-  cv.width=W*CELL;cv.height=H*CELL;stop();draw();
-}
-function clamp(v,a,b){v=parseInt(v)||a;return Math.max(a,Math.min(b,v))}
-function applyN(){
-  N=clamp($('nStates').value,2,32);$('nStates').value=N;
-  rules.forEach(r=>{if(r.t==='c'){r.s=Math.min(r.s,N-1);r.n=Math.min(r.n,N-1);r.o=Math.min(r.o,N-1)}else{r.pat=r.pat.map(v=>v>=N?-1:v);if(r.o>=N)r.o=-1}});
-  if(brush>=N)brush=N-1;
-  for(let i=0;i<grid.length;i++)if(grid[i]>=N)grid[i]=0;
-  init=init.map(v=>v>=N?0:v);
-  sw($('legend'));draw();
-}
-$('nStates').onchange=applyN;
-$('cols').onchange=$('rows').onchange=()=>{newGrid()};
-$('radius').onchange=()=>{R=clamp($('radius').value,1,5);$('radius').value=R;
-  const m=(2*R+1)**2-1;$('maxn').textContent=m;
-  rules.forEach(r=>{if(r.t==='c'){r.min=Math.min(r.min,m);r.max=Math.min(r.max,m)}else resize(r)});renderRules()};
-function resize(r){const ko=Math.round(Math.sqrt(r.pat.length)),k=2*R+1;if(ko===k)return;
-  const p=Array(k*k).fill(-1),a=(ko-1)/2,b=(k-1)/2;
-  for(let y=0;y<ko;y++)for(let x=0;x<ko;x++){const Y=y-a+b,X=x-a+b;if(Y>=0&&X>=0&&Y<k&&X<k)p[Y*k+X]=r.pat[y*ko+x]}
-  r.pat=p}
+      <div class="row" style="margin-bottom: 6px">
+        <span style="color: var(--mute); font-size: 13px">Import / export (states, radius, wrap, rules, colors)</span>
+      </div>
+      <textarea id="io" rows="5" spellcheck="false" placeholder="Paste a CA definition JSON here to import, or press Export"></textarea>
+      
+      <div class="row" style="margin-top: 8px">
+        <button type="button" class="btn" id="exp">Export</button>
+        <button type="button" class="btn" id="imp">Import</button>
+        <span class="msg-status" id="ioMsg"></span>
+      </div>
 
-function stSel(v,cb){
-  const s=document.createElement('select');
-  for(let i=0;i<N;i++){const o=new Option(i,i);s.add(o)}
-  s.value=v;s.onchange=()=>cb(+s.value);
-  s.style.borderLeft=`6px solid ${color(v)}`;return s;
-}
-function numIn(v,cb){
-  const m=(2*R+1)**2-1,i=document.createElement('input');
-  i.type='number';i.min=0;i.max=m;i.value=v;
-  i.onchange=()=>{cb(clamp0(i.value,m));i.value=clamp0(i.value,m)};return i;
-}
-function clamp0(v,m){v=parseInt(v);return isNaN(v)?0:Math.max(0,Math.min(m,v))}
-function txt(t){const s=document.createElement('span');s.textContent=t;return s}
-let pen=1;
-const K=()=>2*R+1;
-function mk(tag,cls,t){const e=document.createElement(tag);if(cls)e.className=cls;if(t!=null)e.textContent=t;return e}
-function paintCell(el,v){el.style.background=v<0?'transparent':color(v);el.textContent=v<0?'*':'';el.title=v<0?'any state':'state '+v}
-function penBar(){
-  const b=$('pen');b.innerHTML='';if(pen>=N)pen=N-1;
-  for(let v=-1;v<N;v++){const s=mk('span',v===pen?'on':'');const i=mk('i');paintCell(i,v);i.title='';
-    s.append(i,v<0?'any':v);s.onclick=()=>{pen=v;penBar()};b.appendChild(s)}
-}
-function cellEl(get,set,px,center){
-  const e=mk('div','pcell'+(center?' ctr':''));e.style.width=e.style.height=px+'px';paintCell(e,get());
-  const go=()=>{set(pen);paintCell(e,pen)};
-  e.onpointerdown=ev=>{if(e.hasPointerCapture&&e.hasPointerCapture(ev.pointerId))e.releasePointerCapture(ev.pointerId);go()};
-  e.onpointerenter=ev=>{if(ev.buttons===1)go()};
-  return e}
-function renderRules(){
-  penBar();
-  const box=$('rules');box.innerHTML='';
-  if(!rules.length)box.appendChild(mk('p','hint','No rules yet — every cell stays as it is.'));
-  const k=K(),px=k<=3?26:k<=5?20:14;
-  rules.forEach((r,i)=>{
-    const d=mk('div','rule'),tb=mk('span','tools');
-    const mv=dir=>{const j=i+dir;if(j<0||j>=rules.length)return;[rules[i],rules[j]]=[rules[j],rules[i]];renderRules()};
-    [['↑',()=>mv(-1)],['↓',()=>mv(1)],['×',()=>{rules.splice(i,1);renderRules()}]].forEach(([t,f])=>{const b=mk('button','x',t);b.onclick=f;tb.appendChild(b)});
-    if(r.t==='c'){
-      const upd=(key,v)=>{r[key]=v;renderRules()};
-      d.append(txt(`${i+1}. If cell is`),stSel(r.s,v=>upd('s',v)),txt('and the number of'),stSel(r.n,v=>upd('n',v)),
-        txt('neighbors is from'),numIn(r.min,v=>r.min=v),txt('to'),numIn(r.max,v=>r.max=v),txt('→ becomes'),stSel(r.o,v=>upd('o',v)));
-    }else{
-      d.append(txt(`${i+1}.`));
-      const g=mk('div','pg');g.style.gridTemplateColumns=`repeat(${k},${px}px)`;
-      for(let j=0;j<k*k;j++)g.appendChild(cellEl(()=>r.pat[j],v=>r.pat[j]=v,px,j===(k*k-1)/2));
-      const o=cellEl(()=>r.o,v=>r.o=v,px+6,false);
-      const lab=mk('label'),cb=mk('input');cb.type='checkbox';cb.checked=!!r.sym;cb.onchange=()=>r.sym=cb.checked;lab.append(cb,'rotate / flip');
-      d.append(g,txt('→'),o,lab);
-    }
-    d.appendChild(tb);box.appendChild(d);
-  });
-}
-$('addP').onclick=()=>{rules.push({t:'p',pat:Array(K()*K()).fill(-1),o:-1,sym:false});renderRules()};
-$('addC').onclick=()=>{rules.push({t:'c',s:0,n:Math.min(1,N-1),min:1,max:(2*R+1)**2-1,o:Math.min(1,N-1)});renderRules()};
-const rot=(q,k)=>{const n=Array(k*k);for(let y=0;y<k;y++)for(let x=0;x<k;x++)n[y*k+x]=q[(k-1-x)*k+y];return n};
-const flip=(q,k)=>{const n=Array(k*k);for(let y=0;y<k;y++)for(let x=0;x<k;x++)n[y*k+x]=q[y*k+k-1-x];return n};
-function compile(){
-  const k=K();
-  return rules.map(r=>{
-    if(r.t==='c')return r;
-    const p=r.pat.length===k*k?r.pat:Array(k*k).fill(-1),vs=[p];
-    if(r.sym){const seen=new Set([p.join()]);let q=p;
-      for(let f=0;f<2;f++){
-        for(let t=0;t<4;t++){q=rot(q,k);if(!seen.has(q.join())){seen.add(q.join());vs.push(q)}}
-        q=flip(q,k);if(!seen.has(q.join())){seen.add(q.join());vs.push(q)}}}
-    return {t:'p',vs,o:r.o}});
-}
-function match(p,x,y,wrap){
-  const k=K();
-  for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
-    const v=p[(dy+R)*k+dx+R];if(v<0)continue;
-    let X=x+dx,Y=y+dy;
-    if(wrap){X=(X+W)%W;Y=(Y+H)%H}else if(X<0||Y<0||X>=W||Y>=H)return false;
-    if(grid[Y*W+X]!==v)return false;
-  }
-  return true}
+      <div class="foot">
+        <span></span>
+        <button type="button" class="btn pri" data-go="1">Rules →</button>
+      </div>
+    </section>
 
-function draw(){
-  const cv=$('cv'),c=cv.getContext('2d');if(!c||!grid)return;
-  const cols=[];for(let i=0;i<N;i++)cols.push(color(i));
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    c.fillStyle=cols[grid[y*W+x]]||cols[0];c.fillRect(x*CELL,y*CELL,CELL,CELL)}
-  if(CELL>=6){c.strokeStyle='rgba(128,128,120,.12)';c.lineWidth=1;c.beginPath();
-    for(let x=0;x<=W;x++){c.moveTo(x*CELL+.5,0);c.lineTo(x*CELL+.5,H*CELL)}
-    for(let y=0;y<=H;y++){c.moveTo(0,y*CELL+.5);c.lineTo(W*CELL,y*CELL+.5)}c.stroke()}
-  $('gen').textContent='gen '+gen;
-}
-function step(){
-  const nx=new Uint8Array(W*H),cnt=new Int32Array(N),wrap=$('wrap').checked,cr=compile();
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    cnt.fill(0);
-    for(let dy=-R;dy<=R;dy++)for(let dx=-R;dx<=R;dx++){
-      if(!dx&&!dy)continue;let X=x+dx,Y=y+dy;
-      if(wrap){X=(X+W)%W;Y=(Y+H)%H}else if(X<0||Y<0||X>=W||Y>=H)continue;
-      cnt[grid[Y*W+X]]++;
-    }
-    const s=grid[y*W+x];let o=s;
-    for(const r of cr){
-      if(r.t==='c'){if(r.s===s&&cnt[r.n]>=r.min&&cnt[r.n]<=r.max){o=r.o<0?s:r.o;break}}
-      else if(r.vs.some(p=>match(p,x,y,wrap))){o=r.o<0?s:r.o;break}
-    }
-    nx[y*W+x]=o;
-  }
-  grid=nx;gen++;draw();
-}
-function stop(){clearInterval(timer);timer=null;$('play').textContent='Run'}
-function play(){
-  if(timer){stop();return}
-  if(gen===0)init=grid.slice();
-  $('play').textContent='Pause';
-  timer=setInterval(step,1000/+$('speed').value);
-}
-$('play').onclick=play;
-$('step').onclick=()=>{stop();if(gen===0)init=grid.slice();step()};
-$('speed').oninput=()=>{if(timer){clearInterval(timer);timer=setInterval(step,1000/+$('speed').value)}};
-$('reset').onclick=()=>{stop();grid=init.slice();gen=0;draw()};
-$('clear').onclick=()=>{stop();grid.fill(0);init=grid.slice();gen=0;draw()};
-function randomize(){
-  stop();const d=clamp($('dens').value,1,100)/100;
-  for(let i=0;i<grid.length;i++)grid[i]=Math.random()<d?1+Math.floor(Math.random()*(N-1)):0;
-  init=grid.slice();gen=0;draw();
-}
-$('rand').onclick=randomize;
+    <!-- Section 1: Rules -->
+    <section id="s1" aria-labelledby="tab-1">
+      <div class="row">
+        <label for="radius">Radius <input type="number" id="radius" min="1" max="5" value="1"></label>
+        <label for="wrap"><input type="checkbox" id="wrap" checked> Wrap edges</label>
+      </div>
 
-let painting=false;
-function paint(e){
-  const r=$('cv').getBoundingClientRect();
-  const x=Math.floor((e.clientX-r.left)/r.width*W),y=Math.floor((e.clientY-r.top)/r.height*H);
-  if(x<0||y<0||x>=W||y>=H)return;
-  grid[y*W+x]=brush;if(gen===0)init=grid.slice();draw();
-}
-$('cv').addEventListener('pointerdown',e=>{painting=true;$('cv').setPointerCapture(e.pointerId);paint(e)});
-$('cv').addEventListener('pointermove',e=>{if(painting)paint(e)});
-addEventListener('pointerup',()=>painting=false);
-matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{sw($('legend'));draw()});
+      <p class="hint">
+        Rules are checked top to bottom; the first match applies, otherwise the cell keeps its state.
+        Pick a pen, then click cells in a pattern to paint them. <b>*</b> matches any state (as a result it means “unchanged”).
+        The outlined center cell is the one being updated; out-of-grid cells only match *. Count rules look at up to <span id="maxn">8</span> neighbors.
+      </p>
 
-const msg=t=>$('ioMsg').textContent=t;
-$('exp').onclick=async()=>{
-  const s=JSON.stringify({ca:1,states:N,radius:R,wrap:$('wrap').checked,rules});
-  $('io').value=s;
-  try{await navigator.clipboard.writeText(s);msg('Exported and copied.')}catch(e){$('io').select();msg('Exported — copy the text above.')}
-};
-$('imp').onclick=()=>{
-  try{
-    const d=JSON.parse($('io').value),n=d.states,r=d.radius??1;
-    if(!Number.isInteger(n)||n<2||n>32)throw 'states must be 2–32';
-    if(!Number.isInteger(r)||r<1||r>5)throw 'radius must be 1–5';
-    if(!Array.isArray(d.rules))throw 'rules must be a list';
-    const k=2*r+1,mx=k*k-1,st=v=>Number.isInteger(v)&&v>=0&&v<n,out=v=>v===-1||st(v);
-    const rs=d.rules.map((x,i)=>{
-      const e=`rule ${i+1}: `;
-      if(x.t==='c'){
-        if(!(st(x.s)&&st(x.n)&&out(x.o)&&Number.isInteger(x.min)&&Number.isInteger(x.max)&&x.min>=0&&x.max<=mx&&x.min<=x.max))throw e+'invalid count rule';
-        return {t:'c',s:x.s,n:x.n,min:x.min,max:x.max,o:x.o};
-      }
-      if(x.t==='p'){
-        if(!Array.isArray(x.pat)||x.pat.length!==k*k||!x.pat.every(out)||!out(x.o))throw e+'invalid pattern rule';
-        return {t:'p',pat:x.pat.slice(),o:x.o,sym:!!x.sym};
-      }
-      throw e+'unknown type';
-    });
-    stop();R=r;rules=rs;$('nStates').value=n;$('radius').value=r;$('wrap').checked=d.wrap!==false;
-    brush=1;applyN();$('radius').onchange();
-    msg('Imported: '+n+' states, '+rs.length+' rules.');
-  }catch(e){msg('Import failed — '+(e.message||e))}
-};
+      <div class="sw pick" id="pen"></div>
+      <div class="rules-container" id="rules"></div>
 
-newGrid();sw($('legend'));tab(0);
-</script>
+      <div class="row" style="margin-top: 14px">
+        <button type="button" class="btn" id="addP">+ Pattern rule</button>
+        <button type="button" class="btn" id="addC">+ Count rule</button>
+      </div>
+
+      <div class="foot">
+        <button type="button" class="btn" data-go="0">← States</button>
+        <button type="button" class="btn pri" data-go="2">Initial &amp; run →</button>
+      </div>
+    </section>
+
+    <!-- Section 2: Initial & Run -->
+    <section id="s2" aria-labelledby="tab-2">
+      <div class="sw pick" id="brush"></div>
+      <canvas id="cv"></canvas>
+
+      <div class="row" style="margin-top: 14px">
+        <button type="button" class="btn pri" id="play">Run</button>
+        <button type="button" class="btn" id="step">Step</button>
+        <button type="button" class="btn" id="reset">Reset</button>
+        <label for="speed">Speed <input type="range" id="speed" min="1" max="60" value="12"></label>
+        <span class="gen" id="gen">gen 0</span>
+      </div>
+
+      <div class="row">
+        <button type="button" class="btn" id="rand">Randomize</button>
+        <label for="dens">density <input type="number" id="dens" min="1" max="100" value="30">%</label>
+        <button type="button" class="btn" id="clear">Clear</button>
+      </div>
+
+      <p class="hint">Click or drag on the grid to paint with the selected state. “Reset” returns to the last painted configuration.</p>
+
+      <div class="foot">
+        <button type="button" class="btn" data-go="1">← Rules</button>
+        <span></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="index.js"></script>
 </body>
 </html>
